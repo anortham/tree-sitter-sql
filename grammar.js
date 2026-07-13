@@ -131,6 +131,7 @@ export default grammar({
     keyword_increment: _ => make_keyword("increment"),
     keyword_minvalue: _ => make_keyword("minvalue"),
     keyword_maxvalue: _ => make_keyword("maxvalue"),
+    keyword_max: _ => make_keyword("max"),
     keyword_none: _ => make_keyword("none"),
     keyword_owned: _ => make_keyword("owned"),
     keyword_start: _ => make_keyword("start"),
@@ -165,6 +166,7 @@ export default grammar({
     keyword_if: _ => make_keyword("if"),
     keyword_exists: _ => make_keyword("exists"),
     keyword_auto_increment: _ => make_keyword("auto_increment"),
+    keyword_identity: _ => make_keyword("identity"),
     keyword_generated: _ => make_keyword("generated"),
     keyword_always: _ => make_keyword("always"),
     keyword_collate: _ => make_keyword("collate"),
@@ -354,6 +356,7 @@ export default grammar({
     keyword_external: _ => make_keyword("external"),
     keyword_stored: _ => make_keyword("stored"),
     keyword_virtual: _ => make_keyword("virtual"),
+    keyword_persisted: _ => make_keyword("persisted"),
     keyword_cached: _ => make_keyword("cached"),
     keyword_uncached: _ => make_keyword("uncached"),
     keyword_replication: _ => make_keyword("replication"),
@@ -594,7 +597,12 @@ export default grammar({
     ),
 
     binary: $ => parametric_type($, $.keyword_binary, ['precision']),
-    varbinary: $ => parametric_type($, $.keyword_varbinary, ['precision']),
+    varbinary: $ => parametric_type(
+      $,
+      $.keyword_varbinary,
+      ['precision'],
+      choice(alias($._natural_number, $.literal), $.keyword_max),
+    ),
 
     // TODO: should qualify against /\\b(0?[1-9]|[1-4][0-9]|5[0-4])\\b/g
     float: $  => choice(
@@ -620,7 +628,12 @@ export default grammar({
     char: $ => parametric_type($, $.keyword_char),
     varchar: $ => parametric_type($, $.keyword_varchar),
     nchar: $ => parametric_type($, $.keyword_nchar),
-    nvarchar: $ => parametric_type($, $.keyword_nvarchar),
+    nvarchar: $ => parametric_type(
+      $,
+      $.keyword_nvarchar,
+      ['size'],
+      choice(alias($._natural_number, $.literal), $.keyword_max),
+    ),
 
     _include_time_zone: $ => seq(
       choice($.keyword_with, $.keyword_without),
@@ -3041,10 +3054,18 @@ export default grammar({
       ')',
     ),
 
-    column_definition: $ => prec.left(seq(
-      field('name', $._column),
-      field('type', $._type),
-      repeat($._column_constraint),
+    column_definition: $ => prec.left(choice(
+      seq(
+        field('name', $._column),
+        field('type', $._type),
+        repeat($._column_constraint),
+      ),
+      seq(
+        field('name', $._column),
+        $.keyword_as,
+        field('expression', $._expression),
+        optional($.keyword_persisted),
+      ),
     )),
 
     _column_comment: $ => seq(
@@ -3080,7 +3101,9 @@ export default grammar({
       ),
       $._default_expression,
       $._primary_key,
+      $.named_column_constraint,
       $.keyword_auto_increment,
+      $.identity_clause,
       $.direction,
       $._column_comment,
       $._check_constraint,
@@ -3095,6 +3118,28 @@ export default grammar({
       ),
       $.keyword_unique
     )),
+
+    named_column_constraint: $ => seq(
+      $.keyword_constraint,
+      field('name', $.identifier),
+      choice(
+        $._primary_key,
+        $._default_expression,
+      ),
+    ),
+
+    identity_clause: $ => prec.right(seq(
+      $.keyword_identity,
+      optional(seq(
+        '(',
+        field('seed', $.identity_integer),
+        ',',
+        field('increment', $.identity_integer),
+        ')',
+      )),
+    )),
+
+    identity_integer: _ => /[+-]?\d+/,
 
     _check_constraint: $ => seq(
       optional(
@@ -3146,6 +3191,7 @@ export default grammar({
           $._primary_key,
           $.ordered_columns,
         ),
+        $._key_constraint,
         seq(
           $._check_constraint
         )
@@ -3949,7 +3995,7 @@ export default grammar({
       $._tsql_parameter,
       seq("`", $._identifier, "`"),
     ),
-    _bracket_quoted_identifier: _ => token(seq('[', /[A-Za-z_#][^\]]*/, ']')),
+    _bracket_quoted_identifier: _ => token(seq('[', /[A-Za-z_#](?:[^\]]|\]\])*/, ']')),
     _tsql_parameter: $ => seq('@', $._identifier),
     // support nordic chars and umlaue
     _identifier: _ => /[A-Za-z_\u00C0-\u017F][0-9A-Za-z_\u00C0-\u017F]*/,
@@ -3984,7 +4030,13 @@ function wrapped_in_parenthesis(node) {
   return seq("(", ")");
 }
 
-function parametric_type($, type, params = ['size']) {
+function parametric_type(
+  $,
+  type,
+  params = ['size'],
+  firstParameter = alias($._natural_number, $.literal),
+) {
+  const [firstParameterName, ...remainingParameterNames] = params;
   return prec.right(1,
     choice(
       type,
@@ -3992,10 +4044,11 @@ function parametric_type($, type, params = ['size']) {
         type,
         wrapped_in_parenthesis(
           seq(
-            // first parameter is guaranteed, shift it out of the array
-            field(params.shift(), alias($._natural_number, $.literal)),
-            // then, fill in the ", next" until done
-            ...params.map(p => seq(',', field(p, alias($._natural_number, $.literal)))),
+            field(firstParameterName, firstParameter),
+            ...remainingParameterNames.map(name => seq(
+              ',',
+              field(name, alias($._natural_number, $.literal)),
+            )),
           ),
         ),
       ),

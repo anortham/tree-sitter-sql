@@ -3689,6 +3689,84 @@
           }
         ]
       },
+      "expression": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "array",
+            "named": true
+          },
+          {
+            "type": "between_expression",
+            "named": true
+          },
+          {
+            "type": "binary_expression",
+            "named": true
+          },
+          {
+            "type": "case",
+            "named": true
+          },
+          {
+            "type": "cast",
+            "named": true
+          },
+          {
+            "type": "exists",
+            "named": true
+          },
+          {
+            "type": "field",
+            "named": true
+          },
+          {
+            "type": "interval",
+            "named": true
+          },
+          {
+            "type": "invocation",
+            "named": true
+          },
+          {
+            "type": "list",
+            "named": true
+          },
+          {
+            "type": "literal",
+            "named": true
+          },
+          {
+            "type": "object_id",
+            "named": true
+          },
+          {
+            "type": "parameter",
+            "named": true
+          },
+          {
+            "type": "parenthesized_expression",
+            "named": true
+          },
+          {
+            "type": "subquery",
+            "named": true
+          },
+          {
+            "type": "subscript",
+            "named": true
+          },
+          {
+            "type": "unary_expression",
+            "named": true
+          },
+          {
+            "type": "window_function",
+            "named": true
+          }
+        ]
+      },
       "name": {
         "multiple": false,
         "required": true,
@@ -3705,7 +3783,7 @@
       },
       "type": {
         "multiple": true,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "array_size_definition",
@@ -3963,6 +4041,10 @@
           "named": true
         },
         {
+          "type": "identity_clause",
+          "named": true
+        },
+        {
           "type": "interval",
           "named": true
         },
@@ -4039,6 +4121,10 @@
           "named": true
         },
         {
+          "type": "keyword_persisted",
+          "named": true
+        },
+        {
           "type": "keyword_primary",
           "named": true
         },
@@ -4076,6 +4162,10 @@
         },
         {
           "type": "literal",
+          "named": true
+        },
+        {
+          "type": "named_column_constraint",
           "named": true
         },
         {
@@ -4298,7 +4388,7 @@
     "named": true,
     "fields": {
       "name": {
-        "multiple": false,
+        "multiple": true,
         "required": false,
         "types": [
           {
@@ -8806,6 +8896,42 @@
     "fields": {}
   },
   {
+    "type": "identity_clause",
+    "named": true,
+    "fields": {
+      "increment": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identity_integer",
+            "named": true
+          }
+        ]
+      },
+      "seed": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identity_integer",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "keyword_identity",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "index_fields",
     "named": true,
     "fields": {},
@@ -9898,6 +10024,76 @@
     }
   },
   {
+    "type": "named_column_constraint",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "array",
+          "named": true
+        },
+        {
+          "type": "binary_expression",
+          "named": true
+        },
+        {
+          "type": "cast",
+          "named": true
+        },
+        {
+          "type": "invocation",
+          "named": true
+        },
+        {
+          "type": "keyword_constraint",
+          "named": true
+        },
+        {
+          "type": "keyword_current_timestamp",
+          "named": true
+        },
+        {
+          "type": "keyword_default",
+          "named": true
+        },
+        {
+          "type": "keyword_key",
+          "named": true
+        },
+        {
+          "type": "keyword_primary",
+          "named": true
+        },
+        {
+          "type": "list",
+          "named": true
+        },
+        {
+          "type": "literal",
+          "named": true
+        },
+        {
+          "type": "unary_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "nchar",
     "named": true,
     "fields": {
@@ -10055,6 +10251,10 @@
         "multiple": false,
         "required": false,
         "types": [
+          {
+            "type": "keyword_max",
+            "named": true
+          },
           {
             "type": "literal",
             "named": true
@@ -13375,6 +13575,10 @@
         "required": false,
         "types": [
           {
+            "type": "keyword_max",
+            "named": true
+          },
+          {
             "type": "literal",
             "named": true
           }
@@ -14193,6 +14397,10 @@
     "named": true
   },
   {
+    "type": "identity_integer",
+    "named": true
+  },
+  {
     "type": "keyword_action",
     "named": true
   },
@@ -14733,6 +14941,10 @@
     "named": true
   },
   {
+    "type": "keyword_identity",
+    "named": true
+  },
+  {
     "type": "keyword_if",
     "named": true
   },
@@ -14906,6 +15118,10 @@
   },
   {
     "type": "keyword_materialized",
+    "named": true
+  },
+  {
+    "type": "keyword_max",
     "named": true
   },
   {
@@ -15102,6 +15318,10 @@
   },
   {
     "type": "keyword_permissive",
+    "named": true
+  },
+  {
+    "type": "keyword_persisted",
     "named": true
   },
   {
