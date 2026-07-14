@@ -20,6 +20,7 @@ export default grammar({
     [$._column, $._qualified_field],
     [$.object_reference],
     [$.between_expression, $.binary_expression],
+    [$.merge_statement, $._alias],
     [$.time],
     [$.timestamp],
   ],
@@ -55,9 +56,11 @@ export default grammar({
               $.transaction,
               $.statement,
               $.block,
+              $.declare_statement,
             ),
             ';',
           ),
+          $.if_statement,
           $.go_statement,
         ),
       ),
@@ -75,6 +78,7 @@ export default grammar({
     keyword_insert: _ => make_keyword("insert"),
     keyword_replace: _ => make_keyword("replace"),
     keyword_update: _ => make_keyword("update"),
+    keyword_throw: _ => make_keyword("throw"),
     keyword_truncate: _ => make_keyword("truncate"),
     keyword_merge: _ => make_keyword("merge"),
     keyword_show: _ => make_keyword("show"),
@@ -85,6 +89,8 @@ export default grammar({
     keyword_value: _ => make_keyword("value"),
     keyword_matched: _ => make_keyword("matched"),
     keyword_set: _ => make_keyword("set"),
+    keyword_nocount: _ => make_keyword("nocount"),
+    keyword_xact_abort: _ => make_keyword("xact_abort"),
     keyword_from: _ => make_keyword("from"),
     keyword_left: _ => make_keyword("left"),
     keyword_right: _ => make_keyword("right"),
@@ -732,18 +738,67 @@ export default grammar({
         optional_parenthesis($._dml_read),
         $.while_statement,
         $.execute_statement,
+        $.throw_statement,
       ),
     ),
 
     // T-SQL EXEC/EXECUTE procedure_name [args...]
     execute_statement: $ => prec.left(seq(
       choice($.keyword_execute, $.keyword_exec),
-      $.object_reference,
-      optional(comma_list(
-        field('parameter', $._expression),
-        true,
-      )),
+      choice(
+        seq(
+          $.object_reference,
+          optional(comma_list(
+            field('parameter', $._expression),
+            true,
+          )),
+        ),
+        field('command', $.parenthesized_expression),
+      ),
     )),
+
+    if_statement: $ => prec.right(seq(
+      $.keyword_if,
+      field('condition', $._expression),
+      choice(
+        seq(
+          field('consequence', $.statement),
+          optional(';'),
+        ),
+        field('consequence', $.begin_end_block),
+      ),
+    )),
+
+    begin_end_block: $ => seq(
+      $.keyword_begin,
+      repeat(seq(
+        choice(
+          $.statement,
+          $.if_statement,
+        ),
+        optional(';'),
+      )),
+      $.keyword_end,
+    ),
+
+    declare_statement: $ => seq(
+      $.keyword_declare,
+      field('parameter', $.identifier),
+      field('type', $._type),
+      optional(seq(
+        '=',
+        field('initializer', $._expression),
+      )),
+    ),
+
+    throw_statement: $ => seq(
+      $.keyword_throw,
+      field('error_number', $.literal),
+      ',',
+      field('message', $.literal),
+      ',',
+      field('state', $.literal),
+    ),
 
     while_statement: $ => prec.left(seq(
       $.keyword_while,
@@ -780,6 +835,7 @@ export default grammar({
       $._drop_statement,
       $._rename_statement,
       $._optimize_statement,
+      $.merge_statement,
       $._merge_statement,
       $.comment_statement,
       $.set_statement,
@@ -1162,6 +1218,10 @@ export default grammar({
     set_statement: $ => seq(
       $.keyword_set,
       choice(
+        seq(
+          choice($.keyword_nocount, $.keyword_xact_abort),
+          choice($.keyword_on, $.keyword_off),
+        ),
         seq(
           optional(choice($.keyword_session, $.keyword_local)),
           choice(
@@ -2553,7 +2613,7 @@ export default grammar({
       $.identifier,
     ),
 
-    object_id: $ => seq(
+    object_id: $ => prec(2, seq(
       $.keyword_object_id,
       wrapped_in_parenthesis(
         seq(
@@ -2566,7 +2626,7 @@ export default grammar({
           ),
         ),
       ),
-    ),
+    )),
 
     object_reference: $ => choice(
       seq(
@@ -2761,6 +2821,30 @@ export default grammar({
       $.keyword_on,
       optional_parenthesis(field("predicate", $._expression)),
       repeat1($.when_clause)
+    ),
+
+    merge_statement: $ => seq(
+      $.keyword_merge,
+      optional($.keyword_into),
+      field('target', $.object_reference),
+      optional(seq(
+        optional($.keyword_as),
+        field('target_alias', $.identifier),
+      )),
+      $.keyword_using,
+      field('source', $.merge_values_source),
+      $.keyword_on,
+      field('predicate', $._expression),
+      repeat1($.when_clause),
+    ),
+
+    merge_values_source: $ => seq(
+      '(',
+      $.values,
+      ')',
+      optional($.keyword_as),
+      field('source_alias', $.identifier),
+      field('columns', alias($._column_list, $.list)),
     ),
 
     when_clause: $ => prec.left(seq(
@@ -3318,7 +3402,10 @@ export default grammar({
           '.',
         ),
       ),
-      field('name', $.identifier),
+      field('name', choice(
+        $.identifier,
+        alias($.keyword_object_id, $.identifier),
+      )),
     ),
 
     implicit_cast: $ => seq(

@@ -7,7 +7,7 @@
 //! let code = r#"
 //! "#;
 //! let mut parser = tree_sitter::Parser::new();
-//! let language = tree_sitter_sequel::LANGUAGE;
+//! let language = tree_sitter_sequel_tsql::LANGUAGE;
 //! parser
 //!     .set_language(&language.into())
 //!     .expect("Error loading Sql parser");
